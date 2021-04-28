@@ -17,8 +17,9 @@ from to_implement.functions import get_nnet_model, train_nnet
 def sample_training_data(states: List[State], outputs: np.ndarray, env: Environment, num_samp_total: int):
     max_cost_to_go: int = int(np.max(outputs))
 
-    samp_idxs: np.array = np.zeros(0, dtype=np.int)
-    num_per_cost_to_go: List[int] = split_evenly(num_samp_total, max_cost_to_go + 1)
+    samp_idxs: np.array = np.zeros(0, dtype=np.int32)
+    num_per_cost_to_go: List[int] = split_evenly(
+        num_samp_total, max_cost_to_go + 1)
 
     for cost_to_go, num_samp in zip(range(max_cost_to_go + 1), num_per_cost_to_go):
         ctg_idxs = np.where(outputs[:, 0] == cost_to_go)[0]
@@ -51,7 +52,8 @@ def main():
     print("Preparing Data\n")
     data = pickle.load(open("data/data.pkl", "rb"))
 
-    states_nnet, outputs = sample_training_data(data['states'], data['output'], env, batch_size*num_itrs)
+    states_nnet, outputs = sample_training_data(
+        data['states'], data['output'], env, batch_size*num_itrs)
 
     # train with supervised learning
     print("Training DNN\n")
@@ -66,10 +68,12 @@ def main():
         states_targ: List[State] = [data["states"][idx] for idx in idxs_targ]
         states_targ_nnet: np.ndarray = env.state_to_nnet_input(states_targ)
 
-        out_nnet = nnet(states_nnet_to_pytorch_input(states_targ_nnet, device).float()).cpu().data.numpy()
+        out_nnet = nnet(states_nnet_to_pytorch_input(
+            states_targ_nnet, device).float()).cpu().data.numpy()
 
         mse = float(np.mean((out_nnet - cost_to_go) ** 2))
-        print("Cost-To-Go: %i, Ave DNN Output: %f, MSE: %f" % (cost_to_go, float(np.mean(out_nnet)), mse))
+        print("Cost-To-Go: %i, Ave DNN Output: %f, MSE: %f" %
+              (cost_to_go, float(np.mean(out_nnet)), mse))
 
 
 if __name__ == "__main__":
