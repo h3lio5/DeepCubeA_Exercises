@@ -35,7 +35,8 @@ def main():
     train_itr: int = 0
     for vi_update in range(num_vi_updates):
         print("--- Value Iteration Update: %i ---" % vi_update)
-        states: List[State] = env.generate_states(batch_size*num_itrs_per_vi_update, (0, 500))
+        states: List[State] = env.generate_states(
+            batch_size*num_itrs_per_vi_update, (0, 500))
 
         states_nnet: np.ndarray = env.state_to_nnet_input(states)
 
@@ -43,7 +44,8 @@ def main():
         outputs = np.expand_dims(np.array(outputs_np), 1)
 
         nnet.train()
-        train_nnet(nnet, states_nnet, outputs, batch_size, num_itrs_per_vi_update, train_itr)
+        train_nnet(nnet, states_nnet, outputs, batch_size,
+                   num_itrs_per_vi_update, train_itr)
 
         nnet.eval()
         evaluate_cost_to_go(nnet, device, env, data["states"], data["output"])
