@@ -44,36 +44,44 @@ def main():
 
     # get nnet model
     nnet: nn.Module = get_nnet_model()
+    # get optimizer and lr scheduler
+    optimizer = torch.optim.Adam(nnet.parameters(), lr=1e-3)
+    scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer, step_size=100, gamma=0.996)
+    criterion = nn.MSELoss()
+
     device = torch.device('cpu')
     batch_size: int = 100
     num_itrs: int = 10000
+    with open("sample_outputs/exercise_1_akash.txt", 'w') as f:
+        # get data
+        f.write("Preparing Data\n")
+        data = pickle.load(open("data/data.pkl", "rb"))
 
-    # get data
-    print("Preparing Data\n")
-    data = pickle.load(open("data/data.pkl", "rb"))
+        states_nnet, outputs = sample_training_data(
+            data['states'], data['output'], env, batch_size*num_itrs)
 
-    states_nnet, outputs = sample_training_data(
-        data['states'], data['output'], env, batch_size*num_itrs)
+        # train with supervised learning
+        f.write("Training DNN\n")
+        nnet.train()
+        train_nnet(nnet, states_nnet, outputs, batch_size,
+                   num_itrs, 0, criterion, optimizer, scheduler, f)
 
-    # train with supervised learning
-    print("Training DNN\n")
-    nnet.train()
-    train_nnet(nnet, states_nnet, outputs, batch_size, num_itrs, 0)
+        # get performance
+        f.write("Evaluating DNN\n")
+        nnet.eval()
+        for cost_to_go in np.unique(data["output"]):
+            idxs_targ: np.array = np.where(data["output"] == cost_to_go)[0]
+            states_targ: List[State] = [data["states"][idx]
+                                        for idx in idxs_targ]
+            states_targ_nnet: np.ndarray = env.state_to_nnet_input(states_targ)
 
-    # get performance
-    print("Evaluating DNN\n")
-    nnet.eval()
-    for cost_to_go in np.unique(data["output"]):
-        idxs_targ: np.array = np.where(data["output"] == cost_to_go)[0]
-        states_targ: List[State] = [data["states"][idx] for idx in idxs_targ]
-        states_targ_nnet: np.ndarray = env.state_to_nnet_input(states_targ)
+            out_nnet = nnet(states_nnet_to_pytorch_input(
+                states_targ_nnet, device).float()).cpu().data.numpy()
 
-        out_nnet = nnet(states_nnet_to_pytorch_input(
-            states_targ_nnet, device).float()).cpu().data.numpy()
-
-        mse = float(np.mean((out_nnet - cost_to_go) ** 2))
-        print("Cost-To-Go: %i, Ave DNN Output: %f, MSE: %f" %
-              (cost_to_go, float(np.mean(out_nnet)), mse))
+            mse = float(np.mean((out_nnet - cost_to_go) ** 2))
+            f.write("Cost-To-Go: %i, Ave DNN Output: %f, MSE: %f \n" %
+                    (cost_to_go, float(np.mean(out_nnet)), mse))
 
 
 if __name__ == "__main__":

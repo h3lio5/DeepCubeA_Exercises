@@ -4,6 +4,8 @@ import torch.nn as nn
 import numpy as np
 from environments.environment_abstract import Environment, State
 from utils.misc_utils import *
+from torch.optim import Adam
+from torch.optim.lr_scheduler import StepLR
 
 
 def get_nnet_model() -> nn.Module:
@@ -12,14 +14,12 @@ def get_nnet_model() -> nn.Module:
     @return: neural network model
     """
     net = nn.Sequential(nn.Linear(81, 128), nn.BatchNorm1d(num_features=128), nn.ReLU(), nn.Linear(
-        128, 256), nn.BatchNorm1d(num_features=256), nn.ReLU(), nn.Linear(256, 1))
+        128, 256), nn.BatchNorm1d(num_features=256), nn.ReLU(), nn.Linear(256, 128), nn.BatchNorm1d(num_features=128), nn.ReLU(),  nn.Linear(128, 1))
     return net
 
 
 def train_nnet(nnet: nn.Module, states_nnet: np.ndarray, outputs: np.ndarray, batch_size: int, num_itrs: int,
-               train_itr: int):
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(nnet.parameters(), lr=3e-5)
+               train_itr: int, criterion: nn.MSELoss, optimizer: Adam, scheduler: StepLR,  f):
 
     for step in range(num_itrs):
         # Iterate over batches of data
@@ -31,12 +31,13 @@ def train_nnet(nnet: nn.Module, states_nnet: np.ndarray, outputs: np.ndarray, ba
         loss = criterion(target, net_output)
         optimizer.zero_grad()
         loss.backward()
-        nn.utils.clip_grad_value_(nnet.parameters(), 3)
+        nn.utils.clip_grad_value_(nnet.parameters(), 2)
         optimizer.step()
+        scheduler.step()
 
         if step % 100 == 0:
-            print(
-                f'Itr: {train_itr + step}, loss: {loss.item()}, targ_ctg: {np.mean(target.data.numpy())}, nnet_ctg: {np.mean(net_output.data.numpy())}')
+            f.write(
+                f'Itr: {train_itr + step}, lr: {scheduler.get_last_lr()[0]:.2e}, loss: {loss.item()}, targ_ctg: {np.mean(target.data.numpy())}, nnet_ctg: {np.mean(net_output.data.numpy())} \n')
 
 
 def value_iteration(nnet, device, env: Environment, states: List[State]) -> List[float]:

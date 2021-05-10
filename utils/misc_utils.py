@@ -30,7 +30,8 @@ def unflatten(data: List[Any], split_idxs: List[int]) -> List[List[Any]]:
 
 
 def split_evenly(num_total: int, num_splits: int) -> List[int]:
-    num_per: List[int] = [math.floor(num_total / num_splits) for _ in range(num_splits)]
+    num_per: List[int] = [math.floor(num_total / num_splits)
+                          for _ in range(num_splits)]
     left_over: int = num_total % num_splits
     for idx in range(left_over):
         num_per[idx] += 1
@@ -38,14 +39,15 @@ def split_evenly(num_total: int, num_splits: int) -> List[int]:
     return num_per
 
 
-def evaluate_cost_to_go(nnet, device, env: Environment, states: List[State], outputs: np.array):
+def evaluate_cost_to_go(nnet, device, env: Environment, states: List[State], outputs: np.array, f):
     for cost_to_go in np.unique(outputs):
         idxs_targ: np.array = np.where(outputs == cost_to_go)[0]
         states_targ: List[State] = [states[idx] for idx in idxs_targ]
         states_targ_nnet: np.ndarray = env.state_to_nnet_input(states_targ)
 
-        out_nnet = nnet(states_nnet_to_pytorch_input(states_targ_nnet, device).float()).cpu().data.numpy()
+        out_nnet = nnet(states_nnet_to_pytorch_input(
+            states_targ_nnet, device).float()).cpu().data.numpy()
 
         mse = float(np.mean((out_nnet - cost_to_go) ** 2))
-        print("Cost-To-Go: %i, Ave DNN Output: %f, MSE: %f" % (cost_to_go, float(np.mean(out_nnet)), mse))
-
+        f.write("Cost-To-Go: %i, Ave DNN Output: %f, MSE: %f \n" %
+                (cost_to_go, float(np.mean(out_nnet)), mse))
